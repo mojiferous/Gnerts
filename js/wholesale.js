@@ -3,8 +3,52 @@
  * 2/25/14 Mojiferous
  */
 
-
-
+//set up our object to determin character and eye for individual values
+var val_obj = {
+  1: {val: 1, mon: 1},
+  2: {val: 2, mon: 1},
+  3: {val: 3, mon: 1},
+  4: {val: 4, mon: 1},
+  5: {val: 5, mon: 1},
+  6: {val: 6, mon: 1},
+  7: {val: 7, mon: 1},
+  8: {val: 8, mon: 1},
+  9: {val: 9, mon: 1},
+  10: {val: 10, mon: 1},
+  16: {val: 1, mon: 2},
+  18: {val: 2, mon: 2},
+  20: {val: 3, mon: 2},
+  32: {val: 4, mon: 2},
+  36: {val: 5, mon: 2},
+  40: {val: 6, mon: 2},
+  64: {val: 7, mon: 2},
+  72: {val: 8, mon: 2},
+  80: {val: 9, mon: 2},
+  128: {val: 10, mon: 2},
+  144: {val: 1, mon: 3},
+  160: {val: 2, mon: 3},
+  256: {val: 3, mon: 3},
+  288: {val: 4, mon: 3},
+  320: {val: 5, mon: 3},
+  512: {val: 6, mon: 3},
+  572: {val: 7, mon: 3},
+  640: {val: 8, mon: 3},
+  1024: {val: 9, mon: 3},
+  1144: {val: 10, mon: 3},
+  1280: {val: 1, mon: 4},
+  2048: {val: 2, mon: 4},
+  2288: {val: 3, mon: 4},
+  2560: {val: 4, mon: 4},
+  4096: {val: 5, mon: 4},
+  4572: {val: 6, mon: 4},
+  5120: {val: 7, mon: 4},
+  8192: {val: 8, mon: 4},
+  9144: {val: 9, mon: 4},
+  10240: {val: 10, mon: 4},
+  16364: {val: 1, mon: 5},
+  18288: {val: 2, mon: 5},
+  20480: {val: 3, mon: 5}
+};
 
 var map;
 var layer;
@@ -78,49 +122,6 @@ window.onload = function() {
 
   function update() {
 
-//    if (game.input.mousePointer.isDown) {
-//      if(!clickDown) {
-//        clickDown = true;
-//        var clickedTileX = layer.getTileX(game.input.activePointer.worldX);
-//        var clickedTileY = layer.getTileY(game.input.activePointer.worldY);
-//
-//        if(selectedBlock.isClicked) {
-//          //there is another block clicked
-//
-//          if(blocksNear(selectedBlock.x, selectedBlock.y, clickedTileX, clickedTileY)) {
-//            //these blocks are next to each other
-//            combineBlocks(selectedBlock.x, selectedBlock.y, clickedTileX, clickedTileY);
-//          } else {
-//            if(selectedBlock.x != clickedTileX && selectedBlock.y != clickedTileY) {
-//              //the user selected another block
-//
-//              //deselect the old select
-//              map.putTile(0, selectedBlock.x, selectedBlock.y, 1);
-//
-//              selectedBlock.x = clickedTileX;
-//              selectedBlock.y = clickedTileY;
-//
-//              //select the new select
-//              map.putTile(11, clickedTileX, clickedTileY, 1);
-//            } else {
-//              //you are selecting the same tile again
-//              selectedBlock.isClicked = false;
-//              map.putTile(0, clickedTileX, clickedTileY, 1);
-//            }
-//          }
-//        } else {
-//          selectedBlock.isClicked = true;
-//          selectedBlock.x = clickedTileX;
-//          selectedBlock.y = clickedTileY;
-//
-//          map.putTile(11, clickedTileX, clickedTileY, 1);
-//        }
-//      }
-//
-//
-//    } else if(game.input.mousePointer.isUp) {
-//      clickDown = false;
-//    }
   }
 
   /**
@@ -129,7 +130,6 @@ window.onload = function() {
   function initBoard() {
     var blockCount = 0;
     for(var x=0; x<6; x++) {
-      blockVals[blockCount] = new Array(6);
       for(var y=0; y<6; y++) {
         //select a value between 1 and 10
         var tileVal = Math.floor((Math.random()*10)+1);
@@ -141,7 +141,6 @@ window.onload = function() {
         blockVals[blockCount].isSelected = false;
         blockVals[blockCount].globalCount = blockCount;
 
-//        textVals[blockCount] = game.add.text(x*96+8, y*96+30, tileVal, gFontStyle);
         textVals[blockCount] = game.add.sprite(x*96, y*96, 'eyes'+tileVal);
 
         blockCount++;
@@ -195,28 +194,6 @@ window.onload = function() {
   }
 
   /**
-   * check to see if the blocks are near each other
-   * @param x
-   * @param y
-   * @param xa
-   * @param ya
-   * @returns {boolean}
-   */
-  function blocksNear(x, y, xa, ya) {
-    if(x == xa && y == ya) {
-      return false;
-    }
-
-    if(x == xa && Math.abs(y-ya) < 2) {
-      //are the x values equal? (is the second block up or down?)
-      return true;
-    }
-    //otherwise return the test for y==
-    return y == ya && Math.abs(x - xa) < 2;
-
-  }
-
-  /**
    * a box has been clicked
    * @param block
    */
@@ -227,19 +204,33 @@ window.onload = function() {
 
       if(thisBlock == prevBlock) {
         //the user clicked on the same block
+
         clickDown = false;
         selectEmitter.on = false;
+
+      } else {
+        //the user clicked on a different block
+
+        if((Math.abs(blockVals[prevBlock].x - block.x) < 100 && blockVals[prevBlock].y == block.y) || (Math.abs(blockVals[prevBlock].y - block.y) < 100) && blockVals[prevBlock].x == block.x) {
+          //this block is within range
+
+        } else {
+          //the block is out of range of the first block, deselect the first block and select the second
+          blockVals[prevBlock].isSelected = false;
+          prevBlock = block.globalCount;
+
+          moveEmitter(block.x+48, block.y);
+        }
+
       }
 
     } else {
+      //there is no currently clicked block
       clickDown = true;
       block.isSelected = true;
       prevBlock = block.globalCount;
 
-      selectEmitter.x = block.x + 48;
-      selectEmitter.y = block.y;
-
-      selectEmitter.start(false, 600, 5, 0);
+      moveEmitter(block.x+48, block.y);
     }
 //    if(block.worldX != undefined && block.worldY != undefined && block.worldY > 0) {
 //      for(var y=block.worldY-1; y>=0; y--) {
@@ -252,6 +243,13 @@ window.onload = function() {
 //    }
 
 //    block.destroy();
+  }
+
+  function moveEmitter(x, y) {
+    selectEmitter.x = x;
+    selectEmitter.y = y;
+
+    selectEmitter.start(false, 600, 5, 0);
   }
 
 };
