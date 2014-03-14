@@ -74,17 +74,10 @@ window.onload = function() {
   function preload () {
 
     game.load.image('box1', 'assets/box1.png');
-//    game.load.image('box2', 'assets/box2.png');
-//    game.load.image('box3', 'assets/box3.png');
-//    game.load.image('box4', 'assets/box4.png');
-//    game.load.image('box5', 'assets/box5.png');
-//    game.load.image('box6', 'assets/box6.png');
-//    game.load.image('box7', 'assets/box7.png');
-//    game.load.image('box8', 'assets/box8.png');
-//    game.load.image('box9', 'assets/box9.png');
-//    game.load.image('box10', 'assets/box10.png');
-//    game.load.image('box11', 'assets/box11.png');
-//    game.load.image('box12', 'assets/box12.png');
+    game.load.image('box2', 'assets/box2.png');
+    game.load.image('box3', 'assets/box3.png');
+    game.load.image('box4', 'assets/box4.png');
+    game.load.image('box5', 'assets/box5.png');
 
     game.load.image('eyes1', 'assets/eyes1.png');
     game.load.image('eyes2', 'assets/eyes2.png');
@@ -134,14 +127,16 @@ window.onload = function() {
         //select a value between 1 and 10
         var tileVal = Math.floor((Math.random()*10)+1);
 
-        blockVals[blockCount] = game.add.sprite(x*96, y*96, 'box1');//+tileVal);
+        var sprite_val = val_obj[tileVal];
+
+        blockVals[blockCount] = game.add.sprite(x*96, y*96, 'box'+sprite_val.mon);//+tileVal);
         blockVals[blockCount].inputEnabled = true;
         blockVals[blockCount].events.onInputDown.add(clickBox, this);
         blockVals[blockCount].numVal = tileVal;
         blockVals[blockCount].isSelected = false;
         blockVals[blockCount].globalCount = blockCount;
 
-        textVals[blockCount] = game.add.sprite(x*96, y*96, 'eyes'+tileVal);
+        textVals[blockCount] = game.add.sprite(x*96, y*96, 'eyes'+sprite_val.val);
 
         blockCount++;
       }
