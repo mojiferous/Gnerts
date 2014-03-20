@@ -54,10 +54,16 @@ var map;
 var layer;
 
 var clickDown = false;
+var animatingBlocks = false;
 var prevBlock = -1;
+
+var gFromBlock = -1;
+var gFromX = -1;
+var gFromY = -1;
 
 var blockVals = [];
 var textVals = [];
+var totalBlocks = 0;
 
 var gFontStyle = {
   font: '56pt Impact',
@@ -132,60 +138,92 @@ window.onload = function() {
         blockVals[blockCount] = game.add.sprite(x*96, y*96, 'box'+sprite_val.mon);//+tileVal);
         blockVals[blockCount].inputEnabled = true;
         blockVals[blockCount].events.onInputDown.add(clickBox, this);
+        //this is the value of the block
         blockVals[blockCount].numVal = tileVal;
         blockVals[blockCount].isSelected = false;
+        //this is the block's place in the blockVals array
         blockVals[blockCount].globalCount = blockCount;
+        //this lets us interate through the blockvals array and ignore inactive or dead blocks
+        blockVals[blockCount].blockActive = true;
 
         textVals[blockCount] = game.add.sprite(x*96, y*96, 'eyes'+sprite_val.val);
 
         blockCount++;
       }
     }
+
+    totalBlocks = blockCount;
   }
 
   /**
-   * combines the values of two blocks
-   * @param x
-   * @param y
-   * @param xa
-   * @param ya
+   * combine two blocks together
+   * @param from_block
+   * @param to_block
    */
-  function combineBlocks(x, y, xa, ya) {
-    if(blockVals[x][y].blockVal != undefined && blockVals[xa][ya].blockVal != undefined && blockVals[x][y].modVal != undefined && blockVals[xa][ya].modVal != undefined) {
-      var valOne = blockVals[x][y].blockVal;
-      var modOne = blockVals[x][y].modVal;
-      var valTwo = blockVals[xa][ya].blockVal;
-      var modTwo = blockVals[xa][ya].modVal;
+  function combineBlocks(from_block, to_block) {
+    var blockTween = game.add.tween(blockVals[from_block]);
+    var textTween = game.add.tween(textVals[from_block]);
 
-      if(valOne != 0 && valTwo != 0) {
-        //make sure you aren't trying to combine blank blocks
-        //blank out the first tile
-        blockVals[x][y].blockVal = 0;
-        blockVals[x][y].modVal = 0;
-        map.putTile(0, x, y, 0);
+    var val = {};
 
-        var newVal = 0;
+    gFromBlock = from_block;
+    gFromX = blockVals[from_block].x;
+    gFromY = blockVals[from_block].y;
 
-        if(valOne == valTwo) {
-          //the two squares had an equal value
-          newVal = (valOne+valTwo);
-          if(newVal == 0) {
-            newVal = 10;
-          }
-
-        } else {
-          newVal = (valOne < valTwo) ? valOne : valTwo;
-        }
-
-        map.putTile(newVal, xa, ya, 0);
-
-        //blank out the select blocks
-        map.putTile(0, x, y, 1);
-        map.putTile(0, xa, ya, 1);
+    if(blockVals[from_block].x == blockVals[to_block].x) {
+      //these blocks are on the same column
+      if(blockVals[from_block].y > blockVals[to_block].y) {
+        //the block clicked first is below the second block (the first-clicked block always moves)
+        val = {y : '-96'};
+      } else {
+        //the first block is above the second block
+        val = {y : '+96'};
       }
+    } else {
+      //these blocks are in the same row
+      if(blockVals[from_block].x > blockVals[to_block].x) {
+        //this block is to the right of the target block
+        val = {x : '-96'};
+      } else {
+        //this block is to the left
+        val = {x : '+96'};
+      }
+    }
 
+    blockTween.to(val, 300, Phaser.Easing.Linear.None, true);
+    blockTween.to({alpha : 0}, 100, Phaser.Easing.Linear.None, true);
+    blockTween.onComplete.add(finalizeCombine, this);
+
+    textTween.to(val, 300, Phaser.Easing.Linear.None, true);
+    textTween.to({alpha : 0}, 100, Phaser.Easing.Linear.None, true);
+
+  }
+
+  /**
+   * finalize the combination by destroying the moved block and animating blocks above the moved block down
+   */
+  function finalizeCombine() {
+    if(animatingBlocks) {
+      //deactivate the moved block and destroy the sprite
+      blockVals[gFromBlock].destroy();
+      textVals[gFromBlock].destroy();
+      blockVals[gFromBlock].blockActive = false;
+
+      for(var n=0; n < totalBlocks; n++) {
+        if(blockVals[n].blockActive) {
+          if(blockVals[n].x == gFromX && blockVals[n].y < gFromY) {
+            //this block is equal to the moved block horizontally and higher vertically, animate it down
+            game.add.tween(blockVals[n]).to({y : '+96'}, 300, Phaser.Easing.Linear.None, true);
+            game.add.tween(textVals[n]).to({y : '+96'}, 300, Phaser.Easing.Linear.None, true);
+
+          }
+        }
+      }
+      //instead of having each tween in the line have an oncomplete, we jsut set animating blocks back to false, so the user can click again
+      setTimeout('animatingBlocks = false;', 300);
 
     }
+
   }
 
   /**
@@ -193,53 +231,61 @@ window.onload = function() {
    * @param block
    */
   function clickBox(block) {
-    if(clickDown) {
-      //a box has been clicked before
-      var thisBlock = block.globalCount;
+    if(!animatingBlocks) {
+      if(clickDown) {
+        //a box has been clicked before
+        var thisBlock = block.globalCount;
 
-      if(thisBlock == prevBlock) {
-        //the user clicked on the same block
-
-        clickDown = false;
-        selectEmitter.on = false;
-
-      } else {
-        //the user clicked on a different block
-
-        if((Math.abs(blockVals[prevBlock].x - block.x) < 100 && blockVals[prevBlock].y == block.y) || (Math.abs(blockVals[prevBlock].y - block.y) < 100) && blockVals[prevBlock].x == block.x) {
-          //this block is within range
+        if(thisBlock == prevBlock) {
+          //the user clicked on the same block, deselect it and turn off the select emitter
+          clickDown = false;
+          selectEmitter.on = false;
 
         } else {
-          //the block is out of range of the first block, deselect the first block and select the second
-          blockVals[prevBlock].isSelected = false;
-          prevBlock = block.globalCount;
+          //the user clicked on a different block
 
-          moveEmitter(block.x+48, block.y);
+          if((Math.abs(blockVals[prevBlock].x - block.x) < 100 && blockVals[prevBlock].y == block.y) || (Math.abs(blockVals[prevBlock].y - block.y) < 100) && blockVals[prevBlock].x == block.x) {
+            //this block is within range
+
+            //turn on the animating blocks
+            animatingBlocks = true;
+            clickDown = false;
+            //turn off the select emitter
+            selectEmitter.on = false;
+
+            combineBlocks(prevBlock, thisBlock);
+
+
+          } else {
+            //the block is out of range of the first block, deselect the first block and select the second
+            blockVals[prevBlock].isSelected = false;
+            prevBlock = block.globalCount;
+
+            moveEmitter(block.x+48, block.y);
+          }
+
         }
 
+      } else {
+        //there is no currently clicked block
+        clickDown = true;
+        block.isSelected = true;
+        prevBlock = block.globalCount;
+        block.bringToTop();
+        textVals[prevBlock].bringToTop();
+
+
+        moveEmitter(block.x+48, block.y);
       }
-
-    } else {
-      //there is no currently clicked block
-      clickDown = true;
-      block.isSelected = true;
-      prevBlock = block.globalCount;
-
-      moveEmitter(block.x+48, block.y);
     }
-//    if(block.worldX != undefined && block.worldY != undefined && block.worldY > 0) {
-//      for(var y=block.worldY-1; y>=0; y--) {
-//        if(blockVals[block.worldX][y].sprite.y != undefined) {
-//          //tween the block down
-//          game.add.tween(blockVals[block.worldX][y].sprite).to({y : '+96'}, 300, Phaser.Easing.Linear.None, true);
-//        }
-//
-//      }
-//    }
 
-//    block.destroy();
   }
 
+  /**
+   * moves the selected block emitter to x and y
+   * @param x
+   * @param y
+   */
   function moveEmitter(x, y) {
     selectEmitter.x = x;
     selectEmitter.y = y;
