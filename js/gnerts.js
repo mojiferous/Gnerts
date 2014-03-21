@@ -1,54 +1,10 @@
 /**
- * Wholesale Hero JS file
+ * Gnerts game controller file
  * 2/25/14 Mojiferous
  */
 
-//set up our object to determin character and eye for individual values
-var val_obj = {
-  1: {val: 1, mon: 1},
-  2: {val: 2, mon: 1},
-  3: {val: 3, mon: 1},
-  4: {val: 4, mon: 1},
-  5: {val: 5, mon: 1},
-  6: {val: 6, mon: 1},
-  7: {val: 7, mon: 1},
-  8: {val: 8, mon: 1},
-  9: {val: 9, mon: 1},
-  10: {val: 10, mon: 1},
-  16: {val: 1, mon: 2},
-  18: {val: 2, mon: 2},
-  20: {val: 3, mon: 2},
-  32: {val: 4, mon: 2},
-  36: {val: 5, mon: 2},
-  40: {val: 6, mon: 2},
-  64: {val: 7, mon: 2},
-  72: {val: 8, mon: 2},
-  80: {val: 9, mon: 2},
-  128: {val: 10, mon: 2},
-  144: {val: 1, mon: 3},
-  160: {val: 2, mon: 3},
-  256: {val: 3, mon: 3},
-  288: {val: 4, mon: 3},
-  320: {val: 5, mon: 3},
-  512: {val: 6, mon: 3},
-  572: {val: 7, mon: 3},
-  640: {val: 8, mon: 3},
-  1024: {val: 9, mon: 3},
-  1144: {val: 10, mon: 3},
-  1280: {val: 1, mon: 4},
-  2048: {val: 2, mon: 4},
-  2288: {val: 3, mon: 4},
-  2560: {val: 4, mon: 4},
-  4096: {val: 5, mon: 4},
-  4572: {val: 6, mon: 4},
-  5120: {val: 7, mon: 4},
-  8192: {val: 8, mon: 4},
-  9144: {val: 9, mon: 4},
-  10240: {val: 10, mon: 4},
-  16364: {val: 1, mon: 5},
-  18288: {val: 2, mon: 5},
-  20480: {val: 3, mon: 5}
-};
+//set up our object to determine character and eye for individual values
+var mon_vals = [0,11,73,641,8103];
 
 var map;
 var layer;
@@ -56,6 +12,9 @@ var layer;
 var clickDown = false;
 var animatingBlocks = false;
 var prevBlock = -1;
+
+var blockGroup;
+var effectGroup;
 
 var gFromBlock = -1;
 var gFromX = -1;
@@ -77,6 +36,9 @@ window.onload = function() {
 
   var game = new Phaser.Game(576, 576, Phaser.CANVAS, 'wholesale-game', { preload: preload, create: create, update: update });
 
+  /**
+   * preload phaser
+   */
   function preload () {
 
     game.load.image('box1', 'assets/box1.png');
@@ -94,13 +56,19 @@ window.onload = function() {
     game.load.image('eyes7', 'assets/eyes7.png');
     game.load.image('eyes8', 'assets/eyes8.png');
     game.load.image('eyes9', 'assets/eyes9.png');
-    game.load.image('eyes10', 'assets/eyes10.png');
+    game.load.image('eyes0', 'assets/eyes0.png');
 
     game.load.image('sparkle', 'assets/jets.png');
 
   }
 
+  /**
+   * called on instantiation of phaser object
+   */
   function create () {
+
+    blockGroup = game.add.group();
+    effectGroup = game.add.group();
 
     game.stage.backgroundColor = '#999999';
 
@@ -116,9 +84,13 @@ window.onload = function() {
     selectEmitter.maxParticleScale = 1;
     selectEmitter.minParticleScale = .2;
 
+    effectGroup.add(selectEmitter);
 
   }
 
+  /**
+   * called on frame update from phaser
+   */
   function update() {
 
   }
@@ -133,9 +105,7 @@ window.onload = function() {
         //select a value between 1 and 10
         var tileVal = Math.floor((Math.random()*10)+1);
 
-        var sprite_val = val_obj[tileVal];
-
-        blockVals[blockCount] = game.add.sprite(x*96, y*96, 'box'+sprite_val.mon);//+tileVal);
+        blockVals[blockCount] = game.add.sprite(x*96, y*96, 'box'+returnBoxValue(tileVal));
         blockVals[blockCount].inputEnabled = true;
         blockVals[blockCount].events.onInputDown.add(clickBox, this);
         //this is the value of the block
@@ -146,13 +116,43 @@ window.onload = function() {
         //this lets us interate through the blockvals array and ignore inactive or dead blocks
         blockVals[blockCount].blockActive = true;
 
-        textVals[blockCount] = game.add.sprite(x*96, y*96, 'eyes'+sprite_val.val);
+        textVals[blockCount] = game.add.sprite(x*96, y*96, 'eyes'+returnEyeValue(tileVal));
+
+        blockGroup.add(blockVals[blockCount]);
+        blockGroup.add(textVals[blockCount]);
 
         blockCount++;
       }
     }
 
     totalBlocks = blockCount;
+  }
+
+  /**
+   * returns a value for the eyes from a passed value
+   * @param val
+   * @returns {number}
+   */
+  function returnEyeValue(val) {
+    return val - (((val/10) | 0)*10);
+  }
+
+  /**
+   * returns the box value from a passed value, based on the mon_val array
+   * @param val
+   * @returns {number}
+   */
+  function returnBoxValue(val) {
+    var retVal = 0;
+    for(var n=0; n < mon_vals.length; n++) {
+      if(val > mon_vals[n]) {
+        retVal = n;
+      }
+    }
+
+    retVal++;
+
+    return retVal;
   }
 
   /**
@@ -190,6 +190,12 @@ window.onload = function() {
       }
     }
 
+
+    blockVals[to_block].numVal = calculateNewBlockValue(blockVals[from_block].numVal, blockVals[to_block].numVal);
+
+    blockVals[to_block].loadTexture('box'+returnBoxValue(blockVals[to_block].numVal), 0);
+    textVals[to_block].loadTexture('eyes'+returnEyeValue(blockVals[to_block].numVal), 0);
+
     blockTween.to(val, 300, Phaser.Easing.Linear.None, true);
     blockTween.to({alpha : 0}, 100, Phaser.Easing.Linear.None, true);
     blockTween.onComplete.add(finalizeCombine, this);
@@ -197,6 +203,38 @@ window.onload = function() {
     textTween.to(val, 300, Phaser.Easing.Linear.None, true);
     textTween.to({alpha : 0}, 100, Phaser.Easing.Linear.None, true);
 
+  }
+
+  /**
+   * returns the new calculated value of a combined block
+   * @param firstVal
+   * @param secondVal
+   * @returns {*}
+   */
+  function calculateNewBlockValue(firstVal, secondVal) {
+    var eye1 = returnEyeValue(firstVal);
+    var eye2 = returnEyeValue(secondVal);
+
+    if(firstVal == secondVal) {
+      //if these values are equal, just return the doubled value
+      return firstVal*2;
+    }
+
+    if(eye1 == eye2) {
+      //the eye values are the same here, so we return the higher value
+      if(firstVal > secondVal) {
+        return firstVal;
+      }
+
+      return secondVal;
+    }
+
+    //the values are not the same, return the lower value
+    if(firstVal < secondVal) {
+      return firstVal;
+    }
+
+    return secondVal;
   }
 
   /**
@@ -273,7 +311,6 @@ window.onload = function() {
         prevBlock = block.globalCount;
         block.bringToTop();
         textVals[prevBlock].bringToTop();
-
 
         moveEmitter(block.x+48, block.y);
       }
