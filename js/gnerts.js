@@ -4,7 +4,7 @@
  */
 
 //set up our object to determine character and eye for individual values
-var mon_vals = [0,11,73,641,8103];
+var mon_vals = [0,10,72,640,8102];
 
 var map;
 var layer;
@@ -23,6 +23,10 @@ var gFromY = -1;
 var blockVals = [];
 var textVals = [];
 var totalBlocks = 0;
+
+var turns = 0;
+var boardTotal = 0;
+var multiplier = 1;
 
 var gFontStyle = {
   font: '56pt Impact',
@@ -104,6 +108,7 @@ window.onload = function() {
       for(var y=0; y<6; y++) {
         //select a value between 1 and 10
         var tileVal = Math.floor((Math.random()*10)+1);
+        boardTotal = boardTotal + tileVal;
 
         blockVals[blockCount] = game.add.sprite(x*96, y*96, 'box'+returnBoxValue(tileVal));
         blockVals[blockCount].inputEnabled = true;
@@ -124,6 +129,8 @@ window.onload = function() {
         blockCount++;
       }
     }
+
+    updateScores();
 
     totalBlocks = blockCount;
   }
@@ -192,6 +199,8 @@ window.onload = function() {
 
 
     blockVals[to_block].numVal = calculateNewBlockValue(blockVals[from_block].numVal, blockVals[to_block].numVal);
+    turns++;
+    updateScores();
 
     blockVals[to_block].loadTexture('box'+returnBoxValue(blockVals[to_block].numVal), 0);
     textVals[to_block].loadTexture('eyes'+returnEyeValue(blockVals[to_block].numVal), 0);
@@ -215,26 +224,33 @@ window.onload = function() {
     var eye1 = returnEyeValue(firstVal);
     var eye2 = returnEyeValue(secondVal);
 
-    if(firstVal == secondVal) {
-      //if these values are equal, just return the doubled value
-      return firstVal*2;
-    }
-
+    var newVal = 0;
     if(eye1 == eye2) {
       //the eye values are the same here, so we return the higher value
-      if(firstVal > secondVal) {
-        return firstVal;
-      }
 
-      return secondVal;
+      newVal = (firstVal+secondVal)*multiplier;
+      multiplier++;
+      boardTotal = boardTotal - secondVal - firstVal + newVal;
+      return newVal;
     }
 
-    //the values are not the same, return the lower value
+    //the values are not the same, subtract the values
+
+
+    multiplier = 0;
     if(firstVal < secondVal) {
-      return firstVal;
+       newVal = secondVal - firstVal;
+    } else {
+      newVal = firstVal - secondVal;
     }
 
-    return secondVal;
+    boardTotal = boardTotal - secondVal - firstVal + newVal;
+
+    if(newVal < 1) {
+      newVal = 1;
+    }
+
+    return newVal;
   }
 
   /**
@@ -247,18 +263,36 @@ window.onload = function() {
       textVals[gFromBlock].destroy();
       blockVals[gFromBlock].blockActive = false;
 
+      var blocksDown = false;
       for(var n=0; n < totalBlocks; n++) {
         if(blockVals[n].blockActive) {
           if(blockVals[n].x == gFromX && blockVals[n].y < gFromY) {
             //this block is equal to the moved block horizontally and higher vertically, animate it down
             game.add.tween(blockVals[n]).to({y : '+96'}, 300, Phaser.Easing.Linear.None, true);
             game.add.tween(textVals[n]).to({y : '+96'}, 300, Phaser.Easing.Linear.None, true);
+            blocksDown = true;
 
           }
         }
       }
+
+      if(!blocksDown && gFromY == 480) {
+        //there are no blocks in this column, move blocks to the right of this column to the left
+        for(n=0; n < totalBlocks; n++) {
+          if(blockVals[n].blockActive) {
+            if(blockVals[n].x > gFromX) {
+              game.add.tween(blockVals[n]).to({x : '-96'}, 300, Phaser.Easing.Linear.None, true);
+              game.add.tween(textVals[n]).to({x : '-96'}, 300, Phaser.Easing.Linear.None, true);
+              blocksDown = true;
+
+            }
+          }
+        }
+      }
+
       //instead of having each tween in the line have an oncomplete, we jsut set animating blocks back to false, so the user can click again
       setTimeout('animatingBlocks = false;', 300);
+
 
     }
 
@@ -330,5 +364,13 @@ window.onload = function() {
     selectEmitter.start(false, 600, 5, 0);
   }
 
+  /**
+   * update the score divs
+   */
+  function updateScores() {
+    $("#game-turns .value").html(turns);
+    $("#game-score .value").html(boardTotal);
+    $("#game-max .value").html(multiplier);
+  }
 };
 
